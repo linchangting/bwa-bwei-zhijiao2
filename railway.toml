@@ -1,0 +1,5 @@
+[build]
+
+[deploy]
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"

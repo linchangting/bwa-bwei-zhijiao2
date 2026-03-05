@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a0505">
+  <title>問筊</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <!-- 氛围层 -->
+  <div class="atmosphere">
+    <div class="smoke s1"></div>
+    <div class="smoke s2"></div>
+    <div class="smoke s3"></div>
+    <div class="smoke s4"></div>
+    <div class="candle-glow"></div>
+  </div>
+
+  <!-- 顶部标题栏 -->
+  <header class="header">
+    <h1 class="app-title">問筊</h1>
+    <button class="btn-icon settings-btn" id="btnSettings" aria-label="设置">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+  </header>
+
+  <!-- ========== 掷筊页面 ========== -->
+  <section class="view active" id="viewDivination">
+    <!-- 模式切换 -->
+    <div class="mode-switcher">
+      <button class="mode-btn active" data-mode="ask">問事模式</button>
+      <button class="mode-btn" data-mode="choose">選擇模式</button>
+    </div>
+
+    <!-- 问事模式输入 -->
+    <div class="input-area" id="askInput">
+      <input type="text" class="question-input" id="questionInput" placeholder="心中默念或輸入問題…" maxlength="100">
+    </div>
+
+    <!-- 选择模式输入 -->
+    <div class="input-area hidden" id="chooseInput">
+      <input type="text" class="question-input" id="optionA" placeholder="選項 A" maxlength="50">
+      <input type="text" class="question-input" id="optionB" placeholder="選項 B" maxlength="50">
+    </div>
+
+    <!-- 掷筊区域 -->
+    <div class="throw-area" id="throwArea">
+      <!-- 三圣筊进度 -->
+      <div class="throw-progress" id="throwProgress">
+        <span class="dot" id="dot1"></span>
+        <span class="dot" id="dot2"></span>
+        <span class="dot" id="dot3"></span>
+      </div>
+
+      <!-- 杯筊容器 -->
+      <div class="blocks-container" id="blocksContainer">
+        <div class="block block-left" id="blockLeft">
+          <div class="block-inner">
+            <div class="block-face block-yang">
+              <div class="block-shape yang"></div>
+            </div>
+            <div class="block-face block-yin">
+              <div class="block-shape yin"></div>
+            </div>
+          </div>
+        </div>
+        <div class="block block-right" id="blockRight">
+          <div class="block-inner">
+            <div class="block-face block-yang">
+              <div class="block-shape yang"></div>
+            </div>
+            <div class="block-face block-yin">
+              <div class="block-shape yin"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 提示文字 -->
+      <div class="throw-hint" id="throwHint">
+        <div class="shake-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="7" y="2" width="10" height="20" rx="2"/>
+            <path d="M5 5l-2 2M5 17l-2-2M19 5l2 2M19 17l2-2" stroke-dasharray="2 2"/>
+          </svg>
+        </div>
+        <p>搖晃手機 或 點擊擲筊</p>
+      </div>
+
+      <!-- 掷筊按钮 -->
+      <button class="throw-btn" id="btnThrow">擲 筊</button>
+    </div>
+
+    <!-- 结果显示 -->
+    <div class="result-panel hidden" id="resultPanel">
+      <div class="result-icon" id="resultIcon"></div>
+      <h2 class="result-title" id="resultTitle"></h2>
+      <p class="result-desc" id="resultDesc"></p>
+      <div class="result-actions">
+        <button class="action-btn primary" id="btnRetry">再問一次</button>
+        <button class="action-btn" id="btnWoodfish" style="display:none">敲木魚積功德</button>
+        <button class="action-btn secondary" id="btnShare">分享結果</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 木鱼页面 ========== -->
+  <section class="view" id="viewWoodfish">
+    <div class="woodfish-container">
+      <div class="merit-display">
+        <span class="merit-label">功德</span>
+        <span class="merit-count" id="meritCount">0</span>
+      </div>
+
+      <div class="woodfish-area" id="woodfishArea">
+        <div class="woodfish-ripple" id="woodfishRipple"></div>
+        <div class="woodfish" id="woodfishBtn">
+          <svg viewBox="0 0 200 200" class="woodfish-svg">
+            <!-- 木鱼主体 -->
+            <ellipse cx="100" cy="110" rx="80" ry="60" fill="url(#woodGrad)" stroke="#3e2010" stroke-width="3"/>
+            <!-- 木鱼嘴 -->
+            <ellipse cx="100" cy="130" rx="25" ry="12" fill="#1a0a05" opacity="0.8"/>
+            <!-- 鱼鳞纹理 -->
+            <path d="M50 100 Q75 85 100 100 Q125 85 150 100" fill="none" stroke="#3e2010" stroke-width="2" opacity="0.5"/>
+            <path d="M55 115 Q80 100 100 115 Q120 100 145 115" fill="none" stroke="#3e2010" stroke-width="1.5" opacity="0.4"/>
+            <!-- 木鱼顶部装饰 -->
+            <ellipse cx="100" cy="65" rx="30" ry="15" fill="url(#woodGrad2)" stroke="#3e2010" stroke-width="2"/>
+            <circle cx="100" cy="65" r="5" fill="#c9a84c"/>
+            <defs>
+              <radialGradient id="woodGrad" cx="40%" cy="30%">
+                <stop offset="0%" stop-color="#a0673a"/>
+                <stop offset="100%" stop-color="#5c3317"/>
+              </radialGradient>
+              <radialGradient id="woodGrad2" cx="50%" cy="30%">
+                <stop offset="0%" stop-color="#8b6340"/>
+                <stop offset="100%" stop-color="#4a2c17"/>
+              </radialGradient>
+            </defs>
+          </svg>
+        </div>
+        <!-- 功德飘字容器 -->
+        <div class="merit-float-container" id="meritFloatContainer"></div>
+      </div>
+
+      <div class="woodfish-stats">
+        <div class="stat-item">
+          <span class="stat-val" id="todayWoodfish">0</span>
+          <span class="stat-label">今日敲擊</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val" id="totalWoodfish">0</span>
+          <span class="stat-label">累計敲擊</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val" id="reThrowCount">0</span>
+          <span class="stat-label">再擲機會</span>
+        </div>
+      </div>
+
+      <p class="woodfish-tip">每 <span id="meritPerRethrow">50</span> 功德可兌換一次「再擲」機會</p>
+    </div>
+  </section>
+
+  <!-- ========== 签文页面 ========== -->
+  <section class="view" id="viewFortune">
+    <div class="fortune-container">
+      <div class="fortune-card" id="fortuneCard">
+        <div class="fortune-seal" id="fortuneSeal"></div>
+        <h3 class="fortune-number" id="fortuneNumber"></h3>
+        <h2 class="fortune-title" id="fortuneTitle"></h2>
+        <div class="fortune-grade" id="fortuneGrade"></div>
+        <pre class="fortune-poem" id="fortunePoem"></pre>
+        <div class="fortune-divider"></div>
+        <p class="fortune-interpretation" id="fortuneInterpretation"></p>
+        <div class="fortune-tags" id="fortuneTags"></div>
+      </div>
+      <button class="action-btn primary" id="btnNewFortune" style="display:none">明日再求</button>
+    </div>
+  </section>
+
+  <!-- ========== 历史记录页面 ========== -->
+  <section class="view" id="viewHistory">
+    <div class="history-container">
+      <div class="history-header">
+        <h2>擲筊記錄</h2>
+        <button class="btn-text" id="btnClearHistory">清除</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <p class="empty-hint">還沒有記錄，去擲筊吧～</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 功德商店页面 ========== -->
+  <section class="view" id="viewMerit">
+    <div class="merit-container">
+      <div class="merit-hero">
+        <div class="merit-big-count" id="meritBigCount">0</div>
+        <div class="merit-big-label">累計功德</div>
+      </div>
+
+      <div class="shop-section">
+        <h3 class="shop-title">功德兌換</h3>
+        <div class="shop-list" id="shopList"></div>
+      </div>
+
+      <div class="achievement-section">
+        <h3 class="shop-title">成就</h3>
+        <div class="achievement-list" id="achievementList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 设置弹窗 -->
+  <div class="modal-overlay hidden" id="settingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>設置</h3>
+        <button class="btn-icon" id="btnCloseSettings">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label class="setting-row">
+          <span>音效</span>
+          <input type="checkbox" id="settingSound" checked>
+          <span class="toggle"></span>
+        </label>
+        <label class="setting-row">
+          <span>音量</span>
+          <input type="range" id="settingVolume" min="0" max="100" value="70" class="range-input">
+        </label>
+        <label class="setting-row">
+          <span>震動</span>
+          <input type="checkbox" id="settingVibrate" checked>
+          <span class="toggle"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div class="toast hidden" id="toast"></div>
+
+  <!-- 底部Tab栏 -->
+  <nav class="tab-bar">
+    <button class="tab active" data-view="viewDivination">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12a4 4 0 008 0"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
+      <span>擲筊</span>
+    </button>
+    <button class="tab" data-view="viewWoodfish">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="14" rx="9" ry="7"/><ellipse cx="12" cy="8" rx="4" ry="2.5"/><circle cx="12" cy="8" r="1" fill="currentColor"/></svg>
+      <span>木魚</span>
+    </button>
+    <button class="tab" data-view="viewFortune">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="1"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="13" y2="15"/></svg>
+      <span>簽文</span>
+    </button>
+    <button class="tab" data-view="viewHistory">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>記錄</span>
+    </button>
+    <button class="tab" data-view="viewMerit">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="none"/></svg>
+      <span>功德</span>
+    </button>
+  </nav>
+
+  <script src="js/storage.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/fortune.js"></script>
+  <script src="js/divination.js"></script>
+  <script src="js/woodfish.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
