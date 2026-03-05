@@ -201,6 +201,34 @@ body {
   width: 100%; position: relative;
 }
 
+/* 轮次显示 */
+.round-display {
+  margin-bottom: 8px;
+  padding: 4px 16px;
+  border-radius: 12px;
+  background: rgba(201,168,76,0.08);
+  border: 1px solid rgba(201,168,76,0.15);
+}
+.round-text {
+  font-size: 12px;
+  color: var(--text2);
+  letter-spacing: 1px;
+}
+.round-display.round-warning .round-text { color: var(--gold); }
+.round-display.round-final {
+  background: rgba(204,51,51,0.12);
+  border-color: rgba(204,51,51,0.25);
+  animation: roundFinalPulse 1.5s ease-in-out infinite;
+}
+.round-display.round-final .round-text {
+  color: #e07070;
+  font-weight: 700;
+}
+@keyframes roundFinalPulse {
+  0%, 100% { border-color: rgba(204,51,51,0.15); }
+  50% { border-color: rgba(204,51,51,0.4); }
+}
+
 /* 三圣筊进度点 */
 .throw-progress {
   display: flex; gap: 12px; margin-bottom: 20px;
@@ -348,6 +376,20 @@ body {
 
 .result-panel.holy .result-title { color: var(--gold-light); text-shadow: 0 0 20px rgba(201,168,76,0.4); }
 .result-panel.unholy .result-title { color: var(--red-light); }
+
+.final-verdict {
+  display: inline-block;
+  font-family: 'Ma Shan Zheng', cursive;
+  font-size: 18px;
+  color: var(--red-light);
+  margin-bottom: 4px;
+}
+.final-hint {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-style: italic;
+}
 
 /* 选择模式结果 */
 .choice-result {

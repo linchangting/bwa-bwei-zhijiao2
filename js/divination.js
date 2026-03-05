@@ -2,13 +2,16 @@ const Divination = (() => {
   let mode = 'ask';
   let throwCount = 0;
   let holyCount = 0;
+  let roundNumber = 1;
   let isAnimating = false;
   let shakeEnabled = false;
   let lastShake = 0;
   let penanceRequired = 0;
   let penanceDone = 0;
   let locked = false;
+  let finalLocked = false;
 
+  const MAX_ROUNDS = 3;
   const SHAKE_THRESHOLD = 20;
   const SHAKE_COOLDOWN = 2000;
   const RESULT_TYPES = { HOLY: 'holy', LAUGH: 'laugh', ANGRY: 'angry' };
@@ -32,12 +35,15 @@ const Divination = (() => {
       resultDesc: $('resultDesc'),
       btnRetry: $('btnRetry'),
       btnWoodfish: $('btnWoodfish'),
+      btnNewQuestion: $('btnNewQuestion'),
       btnShare: $('btnShare'),
       questionInput: $('questionInput'),
       optionA: $('optionA'),
       optionB: $('optionB'),
       askInput: $('askInput'),
       chooseInput: $('chooseInput'),
+      roundDisplay: $('roundDisplay'),
+      roundText: $('roundText'),
       dots: [$('dot1'), $('dot2'), $('dot3')]
     };
   }
@@ -49,7 +55,16 @@ const Divination = (() => {
     return RESULT_TYPES.ANGRY;
   }
 
-  function resetState() {
+  function fullReset() {
+    roundNumber = 1;
+    resetRound();
+    finalLocked = false;
+    const el = getElements();
+    el.btnNewQuestion.style.display = 'none';
+    updateRoundDisplay();
+  }
+
+  function resetRound() {
     throwCount = 0;
     holyCount = 0;
     penanceRequired = 0;
@@ -59,19 +74,43 @@ const Divination = (() => {
     el.dots.forEach(d => { d.className = 'dot'; });
     el.resultPanel.classList.add('hidden');
     el.resultPanel.classList.remove('holy', 'unholy');
-    el.btnRetry.classList.remove('btn-unlocking');
+    el.btnRetry.classList.remove('btn-unlocking', 'btn-locked');
+    el.btnRetry.style.display = '';
+    el.btnNewQuestion.style.display = 'none';
     el.throwArea.style.display = '';
     el.btnThrow.disabled = false;
     el.throwHint.style.display = '';
+    el.throwHint.querySelector('p').textContent = '搖晃手機 或 點擊擲筊';
     el.blockLeft.classList.remove('throwing', 'delay');
     el.blockRight.classList.remove('throwing', 'delay');
     el.blockLeft.querySelector('.block-inner').className = 'block-inner';
     el.blockRight.querySelector('.block-inner').className = 'block-inner';
     isAnimating = false;
+    updateRoundDisplay();
+  }
+
+  function updateRoundDisplay() {
+    const el = getElements();
+    el.roundText.textContent = `第 ${roundNumber}/${MAX_ROUNDS} 輪`;
+    if (roundNumber > 1) {
+      el.roundDisplay.classList.add('round-warning');
+    } else {
+      el.roundDisplay.classList.remove('round-warning');
+    }
+    if (roundNumber >= MAX_ROUNDS) {
+      el.roundDisplay.classList.add('round-final');
+    } else {
+      el.roundDisplay.classList.remove('round-final');
+    }
+  }
+
+  function startNextRound() {
+    roundNumber++;
+    resetRound();
   }
 
   function performThrow() {
-    if (isAnimating) return;
+    if (isAnimating || finalLocked) return;
     isAnimating = true;
 
     AudioEngine.warmUp();
@@ -166,11 +205,11 @@ const Divination = (() => {
       el.resultIcon.textContent = '🌟';
       el.resultTitle.textContent = '三聖筊';
       el.btnWoodfish.style.display = 'none';
-      el.btnRetry.style.display = '';
-      el.btnRetry.disabled = false;
-      el.btnRetry.textContent = '再問一次';
-      el.btnRetry.classList.remove('btn-unlocking', 'btn-locked');
+      el.btnRetry.style.display = 'none';
+      el.btnNewQuestion.style.display = '';
+      el.btnNewQuestion.textContent = '換個問題再問';
       locked = false;
+      finalLocked = false;
 
       if (mode === 'choose') {
         const chosen = el.optionA.value.trim() || 'A';
@@ -180,26 +219,13 @@ const Divination = (() => {
         el.resultDesc.textContent = '神明允諾！此事大吉，放心去做。';
       }
 
-      Storage.addHistory({ question, result: '三聖筊', mode, holy: true });
+      Storage.addHistory({ question, result: '三聖筊', round: roundNumber, mode, holy: true });
       checkAchievements('tripleHoly');
     } else {
       el.resultPanel.classList.remove('hidden', 'holy');
       el.resultPanel.classList.add('unholy');
-      el.btnWoodfish.style.display = '';
 
-      locked = true;
-      if (failType === RESULT_TYPES.LAUGH) {
-        penanceRequired = PENANCE_LAUGH;
-      } else {
-        penanceRequired = PENANCE_ANGRY;
-      }
-      penanceDone = 0;
-
-      el.btnRetry.style.display = '';
-      el.btnRetry.disabled = true;
-      el.btnRetry.classList.add('btn-locked');
-      el.btnRetry.classList.remove('btn-unlocking');
-      el.btnRetry.textContent = `需敲木魚 ${penanceRequired} 下`;
+      const isLastRound = roundNumber >= MAX_ROUNDS;
 
       if (failType === RESULT_TYPES.LAUGH) {
         el.resultIcon.textContent = '😏';
@@ -211,8 +237,7 @@ const Divination = (() => {
         } else {
           el.resultDesc.textContent = '神明笑而不語，也許問題需要重新思考。';
         }
-        el.btnWoodfish.textContent = `敲木魚消災（${penanceRequired} 下）`;
-        Storage.addHistory({ question, result: '笑筊', mode, holy: false });
+        Storage.addHistory({ question, result: '笑筊', round: roundNumber, mode, holy: false });
       } else {
         el.resultIcon.textContent = '😤';
         el.resultTitle.textContent = '怒筊';
@@ -223,8 +248,40 @@ const Divination = (() => {
         } else {
           el.resultDesc.textContent = '神明不悅，此事不宜。需敲木魚積功德方可再問。';
         }
+        Storage.addHistory({ question, result: '怒筊', round: roundNumber, mode, holy: false });
+      }
+
+      if (isLastRound) {
+        finalLocked = true;
+        locked = false;
+        el.btnRetry.style.display = 'none';
+        el.btnWoodfish.style.display = 'none';
+        el.btnNewQuestion.style.display = '';
+        el.btnNewQuestion.textContent = '換個問題重新問';
+
+        el.resultDesc.innerHTML =
+          `<span class="final-verdict">三輪已盡，神明心意已決。</span><br>` +
+          el.resultDesc.innerHTML +
+          `<br><small class="final-hint">請尊重神意，換個問題或改日再問。</small>`;
+      } else {
+        locked = true;
+        penanceDone = 0;
+        if (failType === RESULT_TYPES.LAUGH) {
+          penanceRequired = PENANCE_LAUGH;
+        } else {
+          penanceRequired = PENANCE_ANGRY;
+        }
+
+        el.btnRetry.style.display = '';
+        el.btnRetry.disabled = true;
+        el.btnRetry.classList.add('btn-locked');
+        el.btnRetry.classList.remove('btn-unlocking');
+        el.btnRetry.textContent = `需敲木魚 ${penanceRequired} 下（第 ${roundNumber}/${MAX_ROUNDS} 輪）`;
+
+        el.btnWoodfish.style.display = '';
         el.btnWoodfish.textContent = `敲木魚消災（${penanceRequired} 下）`;
-        Storage.addHistory({ question, result: '怒筊', mode, holy: false });
+        el.btnNewQuestion.style.display = '';
+        el.btnNewQuestion.textContent = '換個問題重新問';
       }
     }
 
@@ -299,7 +356,7 @@ const Divination = (() => {
     if (force > SHAKE_THRESHOLD && now - lastShake > SHAKE_COOLDOWN) {
       lastShake = now;
       const activeView = document.querySelector('.view.active');
-      if (activeView && activeView.id === 'viewDivination' && !isAnimating) {
+      if (activeView && activeView.id === 'viewDivination' && !isAnimating && !finalLocked) {
         performThrow();
       }
     }
@@ -329,15 +386,28 @@ const Divination = (() => {
           mode = btn.dataset.mode;
           el.askInput.classList.toggle('hidden', mode !== 'ask');
           el.chooseInput.classList.toggle('hidden', mode !== 'choose');
-          resetState();
+          fullReset();
         });
       });
 
       el.btnThrow.addEventListener('click', performThrow);
 
       el.btnRetry.addEventListener('click', () => {
-        if (locked) return;
-        resetState();
+        if (locked || finalLocked) return;
+        startNextRound();
+      });
+
+      el.btnNewQuestion.addEventListener('click', () => {
+        fullReset();
+        const el2 = getElements();
+        if (mode === 'ask') {
+          el2.questionInput.value = '';
+          el2.questionInput.focus();
+        } else {
+          el2.optionA.value = '';
+          el2.optionB.value = '';
+          el2.optionA.focus();
+        }
       });
 
       el.btnWoodfish.addEventListener('click', () => {
@@ -349,9 +419,10 @@ const Divination = (() => {
       });
 
       initShake();
+      updateRoundDisplay();
     },
 
-    reset: resetState,
+    reset: fullReset,
     getMode: () => mode,
     isLocked: () => locked,
     onPenanceHit,
