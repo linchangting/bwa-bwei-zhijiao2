@@ -2,23 +2,38 @@ const AudioEngine = (() => {
   let ctx = null;
   let enabled = true;
   let volume = 0.7;
+  let warmedUp = false;
 
   function getCtx() {
     if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') ctx.resume();
     return ctx;
   }
 
-  function gain(val) {
-    const g = getCtx().createGain();
-    g.gain.value = val * volume;
-    g.connect(getCtx().destination);
-    return g;
+  function ensureResumed() {
+    const c = getCtx();
+    if (c.state === 'suspended') {
+      c.resume();
+    }
+  }
+
+  function warmUp() {
+    if (warmedUp) return;
+    const c = getCtx();
+    ensureResumed();
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    g.gain.value = 0.001;
+    osc.connect(g);
+    g.connect(c.destination);
+    osc.start();
+    osc.stop(c.currentTime + 0.05);
+    warmedUp = true;
   }
 
   function playNote(freq, type, duration, vol = 1, delay = 0) {
     if (!enabled) return;
     const c = getCtx();
+    ensureResumed();
     const osc = c.createOscillator();
     const g = c.createGain();
     osc.type = type;
@@ -34,6 +49,7 @@ const AudioEngine = (() => {
   function noise(duration, vol = 0.3, delay = 0) {
     if (!enabled) return;
     const c = getCtx();
+    ensureResumed();
     const bufferSize = c.sampleRate * duration;
     const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
     const data = buffer.getChannelData(0);
@@ -56,13 +72,34 @@ const AudioEngine = (() => {
 
   return {
     init() {
-      getCtx();
+      warmUp();
     },
+
+    warmUp,
 
     setEnabled(val) { enabled = val; },
     isEnabled() { return enabled; },
     setVolume(val) { volume = Math.max(0, Math.min(1, val)); },
     getVolume() { return volume; },
+
+    haptic(intensity = 0.6, durationMs = 50) {
+      if (navigator.vibrate) {
+        navigator.vibrate(durationMs);
+      }
+      const c = getCtx();
+      ensureResumed();
+      const dur = durationMs / 1000;
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 25;
+      g.gain.setValueAtTime(intensity * volume, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      osc.connect(g);
+      g.connect(c.destination);
+      osc.start();
+      osc.stop(c.currentTime + dur + 0.01);
+    },
 
     woodfish() {
       if (!enabled) return;
@@ -122,6 +159,14 @@ const AudioEngine = (() => {
       playNote(500, 'sine', 2.0, 0.3);
       playNote(750, 'sine', 1.5, 0.15, 0.05);
       playNote(1000, 'triangle', 1.0, 0.08, 0.1);
+    },
+
+    penanceComplete() {
+      if (!enabled) return;
+      [523, 587, 659, 784, 880, 1047].forEach((f, i) => {
+        playNote(f, 'sine', 0.4, 0.4, i * 0.08);
+        playNote(f * 1.5, 'triangle', 0.3, 0.15, i * 0.08 + 0.02);
+      });
     },
 
     unlock() {

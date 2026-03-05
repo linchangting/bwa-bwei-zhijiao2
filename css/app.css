@@ -680,3 +680,61 @@ input[type="checkbox"]:checked + .toggle::after { left: 22px; background: var(--
 }
 .share-card-img { max-width: 300px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
 .share-actions { display: flex; gap: 12px; }
+
+/* ====== 赎罪 banner ====== */
+.penance-banner {
+  width: 100%; max-width: 320px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(139,26,26,0.4), rgba(90,15,15,0.6));
+  border: 1px solid rgba(204,51,51,0.3);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  animation: bannerPulse 2s ease-in-out infinite;
+}
+.penance-banner.penance-done {
+  background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(138,109,43,0.3));
+  border-color: rgba(201,168,76,0.4);
+  animation: none;
+}
+.penance-icon { font-size: 18px; }
+.penance-done .penance-icon::after { content: '🔓'; }
+.penance-done .penance-icon { font-size: 0; }
+.penance-done .penance-icon::after { font-size: 18px; }
+.penance-text {
+  font-size: 13px;
+  color: var(--text);
+}
+.penance-done .penance-text { color: var(--gold); }
+
+@keyframes bannerPulse {
+  0%, 100% { border-color: rgba(204,51,51,0.2); }
+  50% { border-color: rgba(204,51,51,0.5); }
+}
+
+/* ====== 锁定/解锁按钮 ====== */
+.btn-locked {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  border-color: var(--text-dim) !important;
+  color: var(--text-dim) !important;
+  background: none !important;
+}
+
+.btn-unlocking {
+  animation: unlockGlow 1.5s ease-in-out infinite;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold)) !important;
+  color: var(--bg) !important;
+  border-color: var(--gold-light) !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+}
+
+@keyframes unlockGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(201,168,76,0.3), 0 0 20px rgba(201,168,76,0.1);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(201,168,76,0.6), 0 0 40px rgba(201,168,76,0.3);
+  }
+}

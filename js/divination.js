@@ -5,10 +5,15 @@ const Divination = (() => {
   let isAnimating = false;
   let shakeEnabled = false;
   let lastShake = 0;
+  let penanceRequired = 0;
+  let penanceDone = 0;
+  let locked = false;
 
   const SHAKE_THRESHOLD = 20;
   const SHAKE_COOLDOWN = 2000;
   const RESULT_TYPES = { HOLY: 'holy', LAUGH: 'laugh', ANGRY: 'angry' };
+  const PENANCE_LAUGH = 10;
+  const PENANCE_ANGRY = 30;
 
   const $ = id => document.getElementById(id);
 
@@ -47,10 +52,14 @@ const Divination = (() => {
   function resetState() {
     throwCount = 0;
     holyCount = 0;
+    penanceRequired = 0;
+    penanceDone = 0;
+    locked = false;
     const el = getElements();
     el.dots.forEach(d => { d.className = 'dot'; });
     el.resultPanel.classList.add('hidden');
     el.resultPanel.classList.remove('holy', 'unholy');
+    el.btnRetry.classList.remove('btn-unlocking');
     el.throwArea.style.display = '';
     el.btnThrow.disabled = false;
     el.throwHint.style.display = '';
@@ -65,15 +74,17 @@ const Divination = (() => {
     if (isAnimating) return;
     isAnimating = true;
 
+    AudioEngine.warmUp();
+
     const el = getElements();
     el.btnThrow.disabled = true;
     el.throwHint.style.display = 'none';
 
+    AudioEngine.haptic(0.8, 80);
+
     const result = randomResult();
     const leftYang = result === RESULT_TYPES.HOLY || result === RESULT_TYPES.LAUGH;
     const rightYang = result === RESULT_TYPES.LAUGH;
-    const leftYin = result === RESULT_TYPES.ANGRY;
-    const rightYin = result === RESULT_TYPES.HOLY || result === RESULT_TYPES.ANGRY;
 
     const leftRot = leftYang ? 0 : 180;
     const rightRot = rightYang ? 0 : 180;
@@ -91,10 +102,8 @@ const Divination = (() => {
     el.blockLeft.classList.add('throwing');
     el.blockRight.classList.add('throwing', 'delay');
 
-    if (navigator.vibrate) navigator.vibrate(100);
-
     setTimeout(() => AudioEngine.blockLand(), 800);
-    setTimeout(() => AudioEngine.blockLand(), 950);
+    setTimeout(() => { AudioEngine.blockLand(); AudioEngine.haptic(0.5, 40); }, 950);
 
     Storage.addThrow();
 
@@ -134,6 +143,7 @@ const Divination = (() => {
         AudioEngine.laughResult();
       } else {
         AudioEngine.angryResult();
+        AudioEngine.haptic(1.0, 150);
       }
       setTimeout(() => showFinalResult(false, result), 600);
     }
@@ -156,6 +166,11 @@ const Divination = (() => {
       el.resultIcon.textContent = '🌟';
       el.resultTitle.textContent = '三聖筊';
       el.btnWoodfish.style.display = 'none';
+      el.btnRetry.style.display = '';
+      el.btnRetry.disabled = false;
+      el.btnRetry.textContent = '再問一次';
+      el.btnRetry.classList.remove('btn-unlocking', 'btn-locked');
+      locked = false;
 
       if (mode === 'choose') {
         const chosen = el.optionA.value.trim() || 'A';
@@ -172,6 +187,20 @@ const Divination = (() => {
       el.resultPanel.classList.add('unholy');
       el.btnWoodfish.style.display = '';
 
+      locked = true;
+      if (failType === RESULT_TYPES.LAUGH) {
+        penanceRequired = PENANCE_LAUGH;
+      } else {
+        penanceRequired = PENANCE_ANGRY;
+      }
+      penanceDone = 0;
+
+      el.btnRetry.style.display = '';
+      el.btnRetry.disabled = true;
+      el.btnRetry.classList.add('btn-locked');
+      el.btnRetry.classList.remove('btn-unlocking');
+      el.btnRetry.textContent = `需敲木魚 ${penanceRequired} 下`;
+
       if (failType === RESULT_TYPES.LAUGH) {
         el.resultIcon.textContent = '😏';
         el.resultTitle.textContent = '笑筊';
@@ -182,6 +211,7 @@ const Divination = (() => {
         } else {
           el.resultDesc.textContent = '神明笑而不語，也許問題需要重新思考。';
         }
+        el.btnWoodfish.textContent = `敲木魚消災（${penanceRequired} 下）`;
         Storage.addHistory({ question, result: '笑筊', mode, holy: false });
       } else {
         el.resultIcon.textContent = '😤';
@@ -191,20 +221,35 @@ const Divination = (() => {
           el.resultDesc.innerHTML =
             `神明指引：<span class="choice-result">${chosen}</span><br><small>怒筊否決了前者，選此為宜。</small>`;
         } else {
-          el.resultDesc.textContent = '神明不允，此事不宜。建議敲木魚積功德消災祈福。';
+          el.resultDesc.textContent = '神明不悅，此事不宜。需敲木魚積功德方可再問。';
         }
+        el.btnWoodfish.textContent = `敲木魚消災（${penanceRequired} 下）`;
         Storage.addHistory({ question, result: '怒筊', mode, holy: false });
       }
     }
 
-    const rethrows = Storage.getReThrows();
-    if (rethrows > 0) {
-      el.btnRetry.textContent = `再問一次（機會 ×${rethrows}）`;
-    } else {
-      el.btnRetry.textContent = '再問一次';
+    isAnimating = false;
+  }
+
+  function onPenanceHit() {
+    if (!locked) return false;
+    penanceDone++;
+    const remaining = penanceRequired - penanceDone;
+    const el = getElements();
+
+    if (remaining > 0) {
+      el.btnRetry.textContent = `還需敲 ${remaining} 下`;
+      return false;
     }
 
-    isAnimating = false;
+    locked = false;
+    el.btnRetry.disabled = false;
+    el.btnRetry.classList.remove('btn-locked');
+    el.btnRetry.classList.add('btn-unlocking');
+    el.btnRetry.textContent = '🔔 功德圓滿，可以再問了！';
+    AudioEngine.penanceComplete();
+    AudioEngine.haptic(0.7, 100);
+    return true;
   }
 
   function celebrate() {
@@ -291,6 +336,7 @@ const Divination = (() => {
       el.btnThrow.addEventListener('click', performThrow);
 
       el.btnRetry.addEventListener('click', () => {
+        if (locked) return;
         resetState();
       });
 
@@ -307,6 +353,9 @@ const Divination = (() => {
 
     reset: resetState,
     getMode: () => mode,
+    isLocked: () => locked,
+    onPenanceHit,
+    getPenanceRemaining: () => Math.max(0, penanceRequired - penanceDone),
 
     share() {
       const el = getElements();

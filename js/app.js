@@ -168,8 +168,9 @@ const App = (() => {
       Divination.init();
       Woodfish.init();
 
-      document.addEventListener('click', () => AudioEngine.init(), { once: true });
-      document.addEventListener('touchstart', () => AudioEngine.init(), { once: true });
+      const activateAudio = () => { AudioEngine.init(); AudioEngine.warmUp(); };
+      document.addEventListener('click', activateAudio, { once: true });
+      document.addEventListener('touchstart', activateAudio, { once: true });
 
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(() => {});

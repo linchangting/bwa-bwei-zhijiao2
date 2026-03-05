@@ -14,16 +14,35 @@ const Woodfish = (() => {
       todayWoodfish: $('todayWoodfish'),
       totalWoodfish: $('totalWoodfish'),
       reThrowCount: $('reThrowCount'),
-      meritBigCount: $('meritBigCount')
+      meritBigCount: $('meritBigCount'),
+      penanceBanner: $('penanceBanner'),
+      penanceCounter: $('penanceCounter')
     };
+  }
+
+  function updatePenanceBanner() {
+    const el = getElements();
+    if (Divination.isLocked()) {
+      const remaining = Divination.getPenanceRemaining();
+      el.penanceBanner.classList.remove('hidden');
+      if (remaining > 0) {
+        el.penanceBanner.classList.remove('penance-done');
+        el.penanceCounter.textContent = `還需敲 ${remaining} 下才能再擲筊`;
+      } else {
+        el.penanceBanner.classList.add('penance-done');
+        el.penanceCounter.textContent = '功德圓滿！可以回去再擲筊了';
+      }
+    } else {
+      el.penanceBanner.classList.add('hidden');
+    }
   }
 
   function hit() {
     const el = getElements();
 
+    AudioEngine.warmUp();
     AudioEngine.woodfish();
-
-    if (navigator.vibrate) navigator.vibrate(30);
+    AudioEngine.haptic(0.4, 30);
 
     el.woodfishBtn.classList.add('hit');
     setTimeout(() => el.woodfishBtn.classList.remove('hit'), 80);
@@ -43,13 +62,23 @@ const Woodfish = (() => {
 
     showFloat(el.floatContainer);
 
+    if (Divination.isLocked()) {
+      const completed = Divination.onPenanceHit();
+      updatePenanceBanner();
+      if (completed) {
+        App.toast('功德圓滿！可以回去再擲筊了 🔔');
+      }
+    }
+
     const newThreshold = Math.floor(merit / MERIT_PER_RETHROW);
     if (newThreshold > lastMeritThreshold) {
       lastMeritThreshold = newThreshold;
       Storage.addReThrow(1);
       el.reThrowCount.textContent = Storage.getReThrows();
       AudioEngine.meritUp();
-      App.toast(`功德圓滿！獲得「再擲一次」機會`);
+      if (!Divination.isLocked()) {
+        App.toast(`功德圓滿！獲得「再擲一次」機會`);
+      }
     }
 
     checkAchievements(merit);
@@ -99,6 +128,7 @@ const Woodfish = (() => {
       el.meritCount.textContent = Storage.getMerit();
       el.reThrowCount.textContent = Storage.getReThrows();
       el.totalWoodfish.textContent = Storage.getTotalWoodfish();
+      updatePenanceBanner();
     }
   };
 })();
