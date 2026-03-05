@@ -35,7 +35,7 @@ const App = (() => {
     if (viewId === 'viewHistory') Fortune.refreshHistory();
     if (viewId === 'viewMerit') refreshMeritPage();
     if (viewId === 'viewWoodfish') Woodfish.refresh();
-    if (viewId === 'viewDivination') Divination.reset();
+    if (viewId === 'viewDivination') Divination.onViewEnter();
   }
 
   function renderShop() {
